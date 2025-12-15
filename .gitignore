@@ -144,3 +144,4 @@ examples/*/lint
 
 # avoid ignoring files in ci folder
 !ci/*
+zenn_scip_long_article.md
