@@ -399,6 +399,10 @@ SCIP_RETCODE SCIPperformGenericDivingAlgorithm(
       SCIPgetNNodes(scip), SCIPheurGetName(heur), SCIPgetDepth(scip), nlpcands, SCIPgetDualbound(scip), SCIPgetAvgDualbound(scip),
       SCIPretransformObj(scip, SCIPgetCutoffbound(scip)), SCIPretransformObj(scip, searchbound));
 
+   /* debug log for diving algorithm start */
+   printf("[DEBUG] diving <%s> 開始: depth=%d, 分数変数=%d, maxdivedepth=%d, maxLPiter=%lld\n",
+      SCIPdivesetGetName(diveset), SCIPgetDepth(scip), nlpcands, maxdivedepth, (long long)maxnlpiterations);
+
    /* allocate buffer storage for previous candidates and their branching values for pseudo cost updates */
    lpsolvefreq = SCIPdivesetGetLPSolveFreq(diveset);
    previouscandssize = MAX(1, lpsolvefreq);
@@ -863,6 +867,18 @@ SCIP_RETCODE SCIPperformGenericDivingAlgorithm(
 
    SCIPupdateDivesetStats(scip, diveset, totalnprobingnodes, totalnbacktracks, SCIPgetNSolsFound(scip) - oldnsolsfound,
          SCIPgetNBestSolsFound(scip) - oldnbestsolsfound, SCIPgetNConflictConssFound(scip) - oldnconflictsfound, leafsol, divecontext);
+
+   /* debug log for diving algorithm end */
+   {
+      SCIP_Longint newsolsfound = SCIPgetNSolsFound(scip) - oldnsolsfound;
+      SCIP_Longint newbestsolsfound = SCIPgetNBestSolsFound(scip) - oldnbestsolsfound;
+      const char* resultStr = (*result == SCIP_FOUNDSOL) ? "FOUNDSOL" :
+                              (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" :
+                              (*result == SCIP_DIDNOTRUN) ? "DIDNOTRUN" : "OTHER";
+      printf("[DEBUG] diving <%s> 終了: result=%s, 探索深さ=%d/%d, backtrack=%d, 新解=%lld, 最良解更新=%lld, cutoff=%d\n",
+         SCIPdivesetGetName(diveset), resultStr, SCIPgetProbingDepth(scip), maxdivedepth,
+         totalnbacktracks, (long long)newsolsfound, (long long)newbestsolsfound, cutoff);
+   }
 
    SCIPdebugMsg(scip, "(node %" SCIP_LONGINT_FORMAT ") finished %s diveset (%s heur): %d fractionals, dive %d/%d, LP iter %" SCIP_LONGINT_FORMAT "/%" SCIP_LONGINT_FORMAT ", objval=%g/%g, lpsolstat=%d, cutoff=%u\n",
       SCIPgetNNodes(scip), SCIPdivesetGetName(diveset), SCIPheurGetName(heur), nlpcands, SCIPgetProbingDepth(scip), maxdivedepth, SCIPdivesetGetNLPIterations(diveset, divecontext), maxnlpiterations,

@@ -70,6 +70,7 @@
 #include "scip/struct_stat.h"
 #include "scip/struct_var.h"
 #include "scip/var.h"
+#include <stdio.h>
 #include <string.h>
 
 
@@ -12471,6 +12472,26 @@ SCIP_RETCODE lpSolve(
    SCIPsetDebugMsg(set, "solving LP with %s returned solstat=%d (internal status: %d, primalfeasible=%u, dualfeasible=%u)\n",
       lpalgoName(lp->lastlpalgo), lp->lpsolstat, SCIPlpiGetInternalStatus(lp->lpi),
       SCIPlpiIsPrimalFeasible(lp->lpi), SCIPlpiIsDualFeasible(lp->lpi));
+
+   /* debug output for LP solution */
+   {
+      const char* solstatStr;
+      switch( lp->lpsolstat )
+      {
+      case SCIP_LPSOLSTAT_OPTIMAL: solstatStr = "OPTIMAL"; break;
+      case SCIP_LPSOLSTAT_INFEASIBLE: solstatStr = "INFEASIBLE"; break;
+      case SCIP_LPSOLSTAT_UNBOUNDEDRAY: solstatStr = "UNBOUNDED"; break;
+      case SCIP_LPSOLSTAT_OBJLIMIT: solstatStr = "OBJLIMIT"; break;
+      case SCIP_LPSOLSTAT_ITERLIMIT: solstatStr = "ITERLIMIT"; break;
+      case SCIP_LPSOLSTAT_TIMELIMIT: solstatStr = "TIMELIMIT"; break;
+      default: solstatStr = "OTHER"; break;
+      }
+      if( lp->lpsolstat == SCIP_LPSOLSTAT_OPTIMAL )
+      {
+         printf("[DEBUG] LP解決: status=%s, obj=%.6f, rows=%d, cols=%d, iter=%lld\n",
+                solstatStr, lp->lpobjval, lp->nrows, lp->ncols, stat->nlpiterations);
+      }
+   }
 
    return SCIP_OKAY;
 }

@@ -1627,6 +1627,23 @@ SCIP_RETCODE SCIPbranchruleExecLPSol(
          /* stop timing */
          SCIPclockStop(branchrule->branchclock, set);
 
+         /* DEBUG: 分枝ルール実行ログ */
+         {
+            const char* resultstr;
+            switch( *result ) {
+               case SCIP_CUTOFF: resultstr = "CUTOFF"; break;
+               case SCIP_CONSADDED: resultstr = "CONSADDED"; break;
+               case SCIP_REDUCEDDOM: resultstr = "REDUCEDDOM"; break;
+               case SCIP_SEPARATED: resultstr = "SEPARATED"; break;
+               case SCIP_BRANCHED: resultstr = "BRANCHED"; break;
+               case SCIP_DIDNOTFIND: resultstr = "DIDNOTFIND"; break;
+               case SCIP_DIDNOTRUN: resultstr = "DIDNOTRUN"; break;
+               default: resultstr = "UNKNOWN"; break;
+            }
+            printf("[DEBUG] branchrule <%s> 実行: result=%s, depth=%d\n",
+               branchrule->name, resultstr, SCIPtreeGetCurrentDepth(tree));
+         }
+
          /* evaluate result */
          if( *result != SCIP_CUTOFF
             && *result != SCIP_CONSADDED

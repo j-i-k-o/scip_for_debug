@@ -33,6 +33,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "scip/def.h"
 #include "scip/set.h"
@@ -701,6 +702,17 @@ SCIP_RETCODE SCIPpropExec(
           * reduction counts which were generated in probing mode */
          prop->ndomredsfound += stat->nboundchgs + stat->nholechgs - oldndomchgs;
          prop->ndomredsfound -= (stat->nprobboundchgs + stat->nprobholechgs - oldnprobdomchgs);
+
+         /* debug log for propagator execution */
+         if( *result != SCIP_DIDNOTRUN && *result != SCIP_DELAYED )
+         {
+            SCIP_Longint ndomchgs = stat->nboundchgs + stat->nholechgs - oldndomchgs;
+            const char* resultStr = (*result == SCIP_CUTOFF) ? "CUTOFF" :
+                                    (*result == SCIP_REDUCEDDOM) ? "REDUCEDDOM" :
+                                    (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" : "OTHER";
+            printf("[DEBUG] prop <%s> 実行: result=%s, 境界変更=%lld, depth=%d\n",
+               prop->name, resultStr, (long long)ndomchgs, depth);
+         }
 
          /* evaluate result */
          if( *result != SCIP_CUTOFF

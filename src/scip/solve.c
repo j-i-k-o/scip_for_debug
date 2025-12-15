@@ -32,6 +32,7 @@
  */
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 #include <assert.h>
+#include <stdio.h>
 
 #include "lpi/lpi.h"
 #include "scip/branch.h"
@@ -224,6 +225,20 @@ SCIP_Bool SCIPsolveIsStopped(
       return SCIPsyncstoreSolveIsStopped(SCIPgetSyncstore(set->scip)) || (stat->status != SCIP_STATUS_UNKNOWN);
 }
 
+/* DEBUG: ヒューリスティクスタイミングを文字列に変換 */
+static const char* getHeurTimingString(SCIP_HEURTIMING timing)
+{
+   if( timing & SCIP_HEURTIMING_BEFORENODE ) return "BEFORENODE";
+   if( timing & SCIP_HEURTIMING_DURINGLPLOOP ) return "DURINGLPLOOP";
+   if( timing & SCIP_HEURTIMING_AFTERLPLOOP ) return "AFTERLPLOOP";
+   if( timing & SCIP_HEURTIMING_AFTERNODE ) return "AFTERNODE";
+   if( timing & SCIP_HEURTIMING_DURINGPRICINGLOOP ) return "DURINGPRICINGLOOP";
+   if( timing & SCIP_HEURTIMING_BEFOREPRESOL ) return "BEFOREPRESOL";
+   if( timing & SCIP_HEURTIMING_DURINGPRESOLLOOP ) return "DURINGPRESOLLOOP";
+   if( timing & SCIP_HEURTIMING_AFTERPROPLOOP ) return "AFTERPROPLOOP";
+   return "UNKNOWN";
+}
+
 /** calls primal heuristics */
 SCIP_RETCODE SCIPprimalHeuristics(
    SCIP_SET*             set,                /**< global SCIP settings */
@@ -332,6 +347,10 @@ SCIP_RETCODE SCIPprimalHeuristics(
    ndelayedheurs = 0;
    oldnbestsolsfound = primal->nbestsolsfound;
 
+   /* DEBUG: ヒューリスティクス呼び出し開始 */
+   printf("[DEBUG]       SCIPprimalHeuristics() 開始 (timing=%s, nheurs=%d)\n",
+      getHeurTimingString(heurtiming), set->nheurs);
+
 #ifndef NDEBUG
    /* remember old probing and diving status */
    inprobing = tree != NULL && SCIPtreeProbing(tree);
@@ -377,6 +396,13 @@ SCIP_RETCODE SCIPprimalHeuristics(
       SCIP_CALL( SCIPheurExec(set->heurs[h], set, primal, depth, lpstateforkdepth, heurtiming, nodeinfeasible,
             &ndelayedheurs, &result) );
 
+      /* DEBUG: ヒューリスティクスが解を発見した場合 */
+      if( result == SCIP_FOUNDSOL )
+      {
+         printf("[DEBUG]         ★ ヒューリスティクス <%s> が解を発見! (obj=%.4f)\n",
+            SCIPheurGetName(set->heurs[h]), primal->upperbound);
+      }
+
 #ifndef NDEBUG
       if( BMSgetNUsedBufferMemory(SCIPbuffer(set->scip)) > nusedbuffer )
       {
@@ -405,6 +431,11 @@ SCIP_RETCODE SCIPprimalHeuristics(
    assert(0 <= ndelayedheurs && ndelayedheurs <= set->nheurs);
 
    *foundsol = (primal->nbestsolsfound > oldnbestsolsfound);
+
+   /* DEBUG: ヒューリスティクス呼び出し終了 */
+   printf("[DEBUG]       SCIPprimalHeuristics() 完了\n");
+   if( *foundsol )
+      printf("[DEBUG]       SCIPprimalHeuristics() 新しい最良解発見!\n");
 
    return SCIP_OKAY;
 }
@@ -623,6 +654,10 @@ SCIP_RETCODE propagateDomains(
    *postpone = FALSE;
    propround = 0;
    propagain = TRUE;
+
+   /* DEBUG: 伝播開始 */
+   printf("[DEBUG]         propagateDomains() 開始 (depth=%d, maxrounds=%d)\n", depth, maxproprounds);
+
    while( propagain && !(*cutoff) && !(*postpone) && propround < maxproprounds && !SCIPsolveIsStopped(set, stat, FALSE))
    {
       propround++;
@@ -645,6 +680,9 @@ SCIP_RETCODE propagateDomains(
 
    /* mark the node to be completely propagated in the current repropagation subtree level */
    SCIPnodeMarkPropagated(node, tree);
+
+   /* DEBUG: 伝播完了 */
+   printf("[DEBUG]         propagateDomains() 完了 (rounds=%d, cutoff=%d)\n", propround, *cutoff);
 
    if( *cutoff )
    {
@@ -1771,6 +1809,9 @@ SCIP_RETCODE separationRoundLP(
 
    SCIPsetDebugMsg(set, "calling separators on LP solution in depth %d (onlydelayed: %u)\n", actdepth, onlydelayed);
 
+   /* DEBUG: 分離ラウンド開始 */
+   printf("[DEBUG]         separationRoundLP() 開始 (カット生成)\n");
+
    /* sort separators by priority */
    SCIPsetSortSepas(set);
 
@@ -1970,6 +2011,10 @@ SCIP_RETCODE separationRoundLP(
 
    SCIPsetDebugMsg(set, " -> separation round finished: delayed=%u, enoughcuts=%u, lpflushed=%u, cutoff=%u\n",
       *delayed, *enoughcuts, lp->flushed, *cutoff);
+
+   /* DEBUG: 分離ラウンド終了 */
+   printf("[DEBUG]         separationRoundLP() 完了 (カット数=%d, cutoff=%d)\n",
+      SCIPsepastoreGetNCuts(sepastore), *cutoff);
 
    return SCIP_OKAY;
 }
@@ -3070,6 +3115,9 @@ SCIP_RETCODE priceAndCutLoop(
       if( !root && SCIPlpIsRelax(lp) && SCIPprobAllColsInLP(transprob, set, lp)
          && (SCIPlpGetSolstat(lp) == SCIP_LPSOLSTAT_INFEASIBLE || SCIPlpGetSolstat(lp) == SCIP_LPSOLSTAT_OBJLIMIT) )
       {
+         /* DEBUG: 競合解析 */
+         printf("[DEBUG]         SCIPconflictAnalyzeLP() 競合解析開始 (LP %s)\n",
+            SCIPlpGetSolstat(lp) == SCIP_LPSOLSTAT_INFEASIBLE ? "infeasible" : "objlimit");
          SCIP_CALL( SCIPconflictAnalyzeLP(conflict, conflictstore, blkmem, set, stat, transprob, origprob, tree, reopt,
                lp, branchcand, eventqueue, eventfilter, cliquetable, NULL) );
          *cutoff = TRUE;
@@ -3165,6 +3213,10 @@ SCIP_RETCODE applyBounding(
          || (set->exact_enable && SCIPrationalIsGE(SCIPnodeGetLowerboundExact(focusnode), primal->cutoffboundexact)) )
       {
          *cutoff = TRUE;
+
+         /* DEBUG: 限定によるcutoff */
+         printf("[DEBUG]         applyBounding() cutoff! (lowerbound=%.4f >= cutoffbound=%.4f)\n",
+            SCIPnodeGetLowerbound(focusnode), primal->cutoffbound);
 
          /* call pseudo conflict analysis, if the node is cut off due to the pseudo objective value */
          if( !SCIPsetIsInfinity(set, -pseudoobjval) && !SCIPsetIsInfinity(set, primal->cutoffbound) && SCIPsetIsGE(set, pseudoobjval, primal->cutoffbound) )
@@ -3378,6 +3430,7 @@ SCIP_RETCODE solveNodeLP(
       olddomchgcount = stat->domchgcount;
 
       /* solve the LP with price-and-cut*/
+      printf("[DEBUG]     priceAndCutLoop() 呼び出し (fullseparation=%d)\n", fullseparation);
       SCIP_CALL( priceAndCutLoop(blkmem, set, messagehdlr, stat, mem, transprob, origprob,  primal, tree, reopt, lp,
             pricestore, sepastore, cutpool, delayedcutpool, branchcand, conflict, conflictstore, eventqueue,
             eventfilter, cliquetable, fullseparation, forcedlpsolve, propagateagain, cutoff, unbounded, lperror, pricingaborted) );
@@ -3486,6 +3539,9 @@ SCIP_RETCODE solveNodeRelax(
    assert(relaxcalled != NULL);
    assert(!(*cutoff));
 
+   /* DEBUG: 緩和問題解決開始 */
+   printf("[DEBUG]       solveNodeRelax() 開始 (beforelp=%d, nrelaxs=%d)\n", beforelp, set->nrelaxs);
+
    /* sort by priority */
    SCIPsetSortRelaxs(set);
 
@@ -3549,6 +3605,9 @@ SCIP_RETCODE solveNodeRelax(
             SCIPrelaxGetName(set->relaxs[r]), lowerbound);
       }
    }
+
+   /* DEBUG: 緩和問題解決完了 */
+   printf("[DEBUG]       solveNodeRelax() 完了 (cutoff=%d)\n", *cutoff);
 
    return SCIP_OKAY;
 }
@@ -4187,10 +4246,14 @@ SCIP_RETCODE propAndSolve(
       *lperror = FALSE;
       *unbounded = FALSE;
 
+      /* DEBUG: LP解決開始 */
+      printf("[DEBUG]       solveNodeLP() 開始 (LP緩和を解く)\n");
       /* solve the node's LP */
       SCIP_CALL( solveNodeLP(blkmem, set, messagehdlr, stat, mem, origprob, transprob, primal, tree, reopt, lp, relaxation, pricestore,
             sepastore, cutpool, delayedcutpool, branchcand, conflict, conflictstore, eventqueue, eventfilter, cliquetable,
             initiallpsolved, fullseparation, newinitconss, forcedlpsolve, propagateagain, solverelaxagain, cutoff, unbounded, lperror, pricingaborted) );
+      printf("[DEBUG]       solveNodeLP() 完了 (LP status=%d, obj=%.4f)\n",
+         SCIPlpGetSolstat(lp), *cutoff ? 1e20 : (*lperror ? -1e20 : SCIPlpGetObjval(lp, set, transprob)));
 
       if( focusnode->parent == NULL )
       {
@@ -4504,11 +4567,14 @@ SCIP_RETCODE solveNode(
          /* propagate domains before lp solving and solve relaxation and lp */
          SCIPsetDebugMsg(set, " -> node solving loop: call propagators that are applicable before%s LP is solved\n",
             lpsolved ? " and after" : "");
+         /* DEBUG: propAndSolve呼び出し */
+         printf("[DEBUG]     propAndSolve() 開始 (伝播・LP・分離ループ)\n");
          SCIP_CALL( propAndSolve(blkmem, set, messagehdlr, stat, mem, origprob, transprob, primal, tree, reopt, lp,
                relaxation, pricestore, sepastore, branchcand, cutpool, delayedcutpool, conflict, conflictstore, eventqueue,
                eventfilter, cliquetable, focusnode, actdepth, propagate, solvelp, solverelax, forcedlpsolve, initiallpsolved,
                fullseparation, &afterlpproplps, &heurtiming, &nlperrors, &fullpropagation, &propagateagain, &lpsolved, &relaxcalled,
                &solvelpagain, &solverelaxagain, cutoff, postpone, unbounded, stopped, &lperror, &pricingaborted, &forcedenforcement) );
+         printf("[DEBUG]     propAndSolve() 完了 (lpsolved=%d, cutoff=%d)\n", lpsolved, *cutoff);
          initiallpsolved |= lpsolved;
 
          /* time or solution limit was hit and we already created a dummy child node to terminate fast */
@@ -4714,11 +4780,20 @@ SCIP_RETCODE solveNode(
        */
       wasforcedlpsolve = forcedlpsolve;
       forcedlpsolve = FALSE;
+
+      /* DEBUG: 分枝判定条件のログ */
+      printf("[DEBUG]   分枝判定: infeasible=%d, cutoff=%d, postpone=%d, restart=%d, unbounded=%d\n",
+         *infeasible, *cutoff, *postpone, *restart, *unbounded);
+      printf("[DEBUG]   分枝判定: solverelaxagain=%d, solvelpagain=%d, propagateagain=%d, branched=%d\n",
+         solverelaxagain, solvelpagain, propagateagain, branched);
+
       if( (*infeasible) && !(*cutoff) && !(*postpone) && !(*restart)
          && (!(*unbounded) || SCIPbranchcandGetNExternCands(branchcand) > 0 || SCIPbranchcandGetNPseudoCands(branchcand) > 0)
          && !solverelaxagain && !solvelpagain && !propagateagain && !branched )
       {
          SCIP_RESULT result = SCIP_DIDNOTRUN;
+
+         printf("[DEBUG]   → 分枝が必要と判定\n");
 
          if( SCIPtreeHasFocusNodeLP(tree) )
          {
@@ -4741,8 +4816,11 @@ SCIP_RETCODE solveNode(
                /* branch on LP solution */
                SCIPsetDebugMsg(set, "infeasibility in depth %d was not resolved: branch on LP solution with %d fractionals\n",
                   SCIPnodeGetDepth(focusnode), nlpcands);
+               /* DEBUG: 分枝実行 */
+               printf("[DEBUG]     分枝実行: LP解から分枝 (分数変数数=%d)\n", nlpcands);
                SCIP_CALL( SCIPbranchExecLP(blkmem, set, stat, transprob, origprob, tree, reopt, lp, sepastore, branchcand,
                      eventqueue, eventfilter, primal->cutoffbound, FALSE, &result) );
+               printf("[DEBUG]     分枝完了: 子ノード数=%d\n", tree->nchildren);
                assert(BMSgetNUsedBufferMemory(mem->buffer) == 0);
                assert(result != SCIP_DIDNOTRUN && result != SCIP_DIDNOTFIND);
             }
@@ -4754,8 +4832,10 @@ SCIP_RETCODE solveNode(
                /* branch on external candidates */
                SCIPsetDebugMsg(set, "infeasibility in depth %d was not resolved: branch on %d external branching candidates.\n",
                   SCIPnodeGetDepth(focusnode), SCIPbranchcandGetNExternCands(branchcand));
+               printf("[DEBUG]     分枝実行: 外部候補から分枝 (外部候補数=%d)\n", SCIPbranchcandGetNExternCands(branchcand));
                SCIP_CALL( SCIPbranchExecExtern(blkmem, set, stat, transprob, origprob, tree, reopt, lp, sepastore, branchcand,
                      eventqueue, eventfilter, primal->cutoffbound, TRUE, &result) );
+               printf("[DEBUG]     分枝完了: 子ノード数=%d\n", tree->nchildren);
                assert(BMSgetNUsedBufferMemory(mem->buffer) == 0);
             }
          }
@@ -4765,8 +4845,10 @@ SCIP_RETCODE solveNode(
             /* branch on pseudo solution */
             SCIPsetDebugMsg(set, "infeasibility in depth %d was not resolved: branch on pseudo solution with %d unfixed integers\n",
                SCIPnodeGetDepth(focusnode), SCIPbranchcandGetNPseudoCands(branchcand));
+            printf("[DEBUG]     分枝実行: Pseudo解から分枝 (未固定整数変数数=%d)\n", SCIPbranchcandGetNPseudoCands(branchcand));
             SCIP_CALL( SCIPbranchExecPseudo(blkmem, set, stat, transprob, origprob, tree, reopt, lp, branchcand, eventqueue,
                   eventfilter, primal->cutoffbound, TRUE, &result) );
+            printf("[DEBUG]     分枝完了: 子ノード数=%d\n", tree->nchildren);
             assert(BMSgetNUsedBufferMemory(mem->buffer) == 0);
          }
 
@@ -5275,6 +5357,8 @@ SCIP_RETCODE SCIPsolveCIP(
          if( nextnode == NULL )
          {
             /* select next node to process */
+            /* DEBUG: ノード選択 */
+            printf("[DEBUG] SCIPnodeselSelect() ノード選択中...\n");
             SCIP_CALL( SCIPnodeselSelect(nodesel, set, &nextnode) );
          }
          focusnode = nextnode;
@@ -5283,6 +5367,10 @@ SCIP_RETCODE SCIPsolveCIP(
 
          /* start node activation timer */
          SCIPclockStart(stat->nodeactivationtime, set);
+
+         /* DEBUG: ノードフォーカス */
+         if( focusnode != NULL )
+            printf("[DEBUG] SCIPnodeFocus() ノード活性化 (lowerbound=%.4f)\n", SCIPnodeGetLowerbound(focusnode));
 
          /* focus selected node */
          SCIP_CALL( SCIPnodeFocus(&focusnode, blkmem, set, messagehdlr, stat, transprob, origprob, primal, tree, reopt,
@@ -5320,6 +5408,10 @@ SCIP_RETCODE SCIPsolveCIP(
       stat->nnodes++;
       stat->ntotalnodes++;
 
+      /* DEBUG: ノード処理開始 */
+      printf("\n[DEBUG] ノード %" SCIP_LONGINT_FORMAT " 処理開始 (depth=%d, 残りノード=%d)\n",
+         stat->nnodes, depth, SCIPtreeGetNNodes(tree));
+
       /* update reference bound statistic, if available */
       if( SCIPsetIsGE(set, SCIPnodeGetLowerbound(focusnode), stat->referencebound) )
          stat->nnodesaboverefbound++;
@@ -5329,10 +5421,13 @@ SCIP_RETCODE SCIPsolveCIP(
       SCIP_CALL( SCIPeventChgNode(&event, focusnode) );
       SCIP_CALL( SCIPeventProcess(&event, set, NULL, NULL, NULL, eventfilter) );
 
+      /* DEBUG: solveNode呼び出し */
+      printf("[DEBUG]   -> solveNode() 開始\n");
       /* solve focus node */
       SCIP_CALL( solveNode(blkmem, set, messagehdlr, stat, mem, origprob, transprob, primal, tree, reopt, lp, relaxation,
             pricestore, sepastore, branchcand, cutpool, delayedcutpool, conflict, conflictstore, eventqueue, eventfilter,
             cliquetable, &cutoff, &postpone, &unbounded, &infeasible, restart, &afternodeheur, &stopped) );
+      printf("[DEBUG]   -> solveNode() 完了 (cutoff=%d, infeasible=%d)\n", cutoff, infeasible);
       assert(!cutoff || infeasible);
       assert(BMSgetNUsedBufferMemory(mem->buffer) == 0);
       assert(SCIPtreeGetCurrentNode(tree) == focusnode);
@@ -5387,8 +5482,11 @@ SCIP_RETCODE SCIPsolveCIP(
             /* node solution is feasible: add it to the solution store */
             if( feasible )
             {
+               /* DEBUG: 実行可能解発見 */
+               printf("[DEBUG]   ★★★ 実行可能解発見! ★★★\n");
                SCIP_CALL( addCurrentSolution(blkmem, set, messagehdlr, stat, origprob, transprob, primal, relaxation, tree, reopt,
                      lp, eventqueue, eventfilter, FALSE) );
+               printf("[DEBUG]   現在の最良解: %.4f\n", primal->upperbound);
 
                /* issue NODEFEASIBLE event */
                SCIP_CALL( SCIPeventChgType(&event, SCIP_EVENTTYPE_NODEFEASIBLE) );

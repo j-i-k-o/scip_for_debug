@@ -35,6 +35,7 @@
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "scip/def.h"
 #include "scip/set.h"
@@ -768,6 +769,8 @@ SCIP_RETCODE SCIPcutpoolAddNewRow(
    cutpool->ncuts++;
    cutpool->ncutsfound++;
    cutpool->maxncuts = MAX(cutpool->maxncuts, cutpool->ncuts);
+
+   printf("[DEBUG] cutpool: カット追加 <%s>, プール内カット数=%d\n", SCIProwGetName(row), cutpool->ncuts);
    if( SCIProwIsRemovable(row) )
       cutpool->nremovablecuts++;
 
@@ -1059,6 +1062,16 @@ SCIP_RETCODE SCIPcutpoolSeparate(
       *result = SCIP_CUTOFF;
    else if( found )
       *result = SCIP_SEPARATED;
+
+   /* debug output */
+   {
+      int nfound = SCIPsepastoreGetNCuts(sepastore) - oldncutsfound;
+      if( nfound > 0 )
+      {
+         printf("[DEBUG] cutpool分離: %d カット発見, プール内=%d, 効果的=%d\n",
+                nfound, cutpool->ncuts, nefficaciouscuts);
+      }
+   }
 
    return SCIP_OKAY;
 }

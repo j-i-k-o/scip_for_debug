@@ -35,6 +35,7 @@
 
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "scip/def.h"
 #include "blockmemshell/memory.h"
@@ -469,6 +470,9 @@ SCIP_RETCODE SCIPpresolExec(
    {
       SCIPsetDebugMsg(set, "calling presolver <%s> with timing %u\n", presol->name, timing);
 
+      printf("[DEBUG] presol <%s> 実行開始 (round=%d, timing=%u)\n", presol->name, nrounds, timing);
+      fflush(stdout);
+
       /* start timing */
       SCIPclockStart(presol->presolclock, set);
 
@@ -519,6 +523,20 @@ SCIP_RETCODE SCIPpresolExec(
       /* increase the number of calls, if the presolver tried to find reductions */
       if( *result != SCIP_DIDNOTRUN )
          ++(presol->ncalls);
+
+      /* debug output for presolver result */
+      {
+         const char* resultStr = (*result == SCIP_SUCCESS) ? "SUCCESS" :
+                                 (*result == SCIP_CUTOFF) ? "CUTOFF" :
+                                 (*result == SCIP_UNBOUNDED) ? "UNBOUNDED" :
+                                 (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" :
+                                 (*result == SCIP_DIDNOTRUN) ? "DIDNOTRUN" : "OTHER";
+         printf("[DEBUG] presol <%s> 完了: result=%s, 累計固定=%d, 累計集約=%d, 累計界変更=%d, 累計削除=%d\n",
+                presol->name, resultStr,
+                (int)(presol->nfixedvars), (int)(presol->naggrvars),
+                (int)(presol->nchgbds), (int)(presol->ndelconss));
+         fflush(stdout);
+      }
    }
 
    return SCIP_OKAY;

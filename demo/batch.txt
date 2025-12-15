@@ -1,0 +1,3 @@
+read demo/test_problem.lp
+optimize
+quit

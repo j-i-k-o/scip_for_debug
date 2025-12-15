@@ -31,6 +31,7 @@
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "scip/set.h"
 #include "scip/clock.h"
@@ -340,6 +341,11 @@ SCIP_RETCODE SCIPiisGenerate(
    int i;
    int j;
 
+   /* DEBUG: IIS生成開始 */
+   printf("\n========================================\n");
+   printf("[DEBUG] SCIPiisGenerate() IIS生成開始\n");
+   printf("========================================\n");
+
    /* sort the iis finders by priority */
    SCIPsetSortIISfinders(set);
 
@@ -448,9 +454,13 @@ SCIP_RETCODE SCIPiisGenerate(
          /* start timing */
          SCIPclockStart(iisfinder->iisfindertime, set);
 
+         /* DEBUG: IISファインダー実行 */
+         printf("[DEBUG]   IISファインダー <%s> 実行開始\n", iisfinder->name);
          SCIPdebugMsg(iis->subscip, "----- STARTING IIS FINDER %s -----\n", iisfinder->name);
          SCIP_CALL( iisfinder->iisfinderexec(iis, iisfinder, &result) );
          assert( result == SCIP_SUCCESS || result == SCIP_DIDNOTFIND || result == SCIP_DIDNOTRUN );
+         printf("[DEBUG]   IISファインダー <%s> 完了 (result=%s)\n", iisfinder->name,
+            result == SCIP_SUCCESS ? "SUCCESS" : (result == SCIP_DIDNOTFIND ? "DIDNOTFIND" : "DIDNOTRUN"));
 
          /* stop timing */
          SCIPclockStop(iisfinder->iisfindertime, set);
@@ -528,6 +538,12 @@ SCIP_RETCODE SCIPiisGenerate(
 
    /* stop timing */
    SCIPclockStop(iis->iistime, set);
+
+   /* DEBUG: IIS生成完了 */
+   printf("\n[DEBUG] SCIPiisGenerate() IIS生成完了\n");
+   printf("[DEBUG]   infeasible=%d, irreducible=%d\n", iis->infeasible, iis->irreducible);
+   printf("[DEBUG]   制約数=%d, 変数数=%d\n", SCIPgetNOrigConss(iis->subscip), SCIPgetNOrigVars(iis->subscip));
+   printf("========================================\n\n");
 
    if( !silent )
    {

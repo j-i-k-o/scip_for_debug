@@ -42,6 +42,7 @@
 
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
+#include <stdio.h>
 #include "blockmemshell/memory.h"
 #include "scip/branch.h"
 #include "scip/certificate.h"
@@ -2646,6 +2647,11 @@ SCIP_RETCODE SCIPsolve(
    SCIP_Bool restart;
    SCIP_Bool transferstatistics = FALSE;
 
+   /* DEBUG: エントリーポイント */
+   printf("\n========================================\n");
+   printf("[DEBUG] SCIPsolve() 開始 - メイン求解エントリーポイント\n");
+   printf("========================================\n");
+
    SCIP_CALL( SCIPcheckStage(scip, "SCIPsolve", FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE) );
 
    /* if the stage is already SCIP_STAGE_SOLVED do nothing */
@@ -2731,7 +2737,10 @@ SCIP_RETCODE SCIPsolve(
       case SCIP_STAGE_PRESOLVING:
          /* initialize solving data structures, transform and problem */
 
+         /* DEBUG: 前処理フェーズ開始 */
+         printf("[DEBUG] Phase 2: SCIPpresolve() 開始 - 前処理フェーズ\n");
          SCIP_CALL( SCIPpresolve(scip) );
+         printf("[DEBUG] Phase 2: SCIPpresolve() 完了\n");
          /* remember that we already printed the relevant statistics */
          if( scip->set->stage == SCIP_STAGE_SOLVED )
             statsprinted = TRUE;
@@ -2758,8 +2767,11 @@ SCIP_RETCODE SCIPsolve(
             SCIP_CALL( prepareReoptimization(scip) );
          }
 
+         /* DEBUG: 初期化フェーズ開始 */
+         printf("[DEBUG] Phase 3: initSolve() 開始 - 求解初期化・分枝限定木作成\n");
          /* initialize solving process data structures */
          SCIP_CALL( initSolve(scip, FALSE) );
+         printf("[DEBUG] Phase 3: initSolve() 完了 - ルートノード作成済み\n");
          assert(scip->set->stage == SCIP_STAGE_SOLVING);
          SCIPmessagePrintVerbInfo(scip->messagehdlr, scip->set->disp_verblevel, SCIP_VERBLEVEL_NORMAL, "\n");
 
@@ -2784,10 +2796,15 @@ SCIP_RETCODE SCIPsolve(
          if( SCIPisExact(scip) )
             SCIPinfoMessage(scip, NULL, "solving problem in exact solving mode\n\n");
 
+         /* DEBUG: メイン求解ループ開始 */
+         printf("\n[DEBUG] Phase 4: SCIPsolveCIP() 開始 - 分枝限定法メインループ\n");
+         printf("========================================\n");
          SCIP_CALL( SCIPsolveCIP(scip->mem->probmem, scip->set, scip->messagehdlr, scip->stat, scip->mem, scip->origprob, scip->transprob,
                scip->primal, scip->tree, scip->reopt, scip->lp, scip->relaxation, scip->pricestore, scip->sepastore,
                scip->cutpool, scip->delayedcutpool, scip->branchcand, scip->conflict, scip->conflictstore,
                scip->eventqueue, scip->eventfilter, scip->cliquetable, &restart) );
+         printf("\n========================================\n");
+         printf("[DEBUG] Phase 4: SCIPsolveCIP() 完了 - メインループ終了\n");
 
          /* detect, whether problem is solved */
          if( SCIPtreeGetNNodes(scip->tree) == 0 && SCIPtreeGetCurrentNode(scip->tree) == NULL )

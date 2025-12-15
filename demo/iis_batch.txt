@@ -1,0 +1,5 @@
+read demo/infeasible_problem.lp
+optimize
+iis
+display iis
+quit

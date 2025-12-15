@@ -516,6 +516,24 @@ SCIP_RETCODE SCIPsepaExecLP(
    else
       *result = SCIP_DIDNOTRUN;
 
+   /* DEBUG: 分離器実行ログ */
+   {
+      const char* resultstr;
+      switch( *result ) {
+         case SCIP_DIDNOTRUN: resultstr = "DIDNOTRUN"; break;
+         case SCIP_DELAYED: resultstr = "DELAYED"; break;
+         case SCIP_DIDNOTFIND: resultstr = "DIDNOTFIND"; break;
+         case SCIP_SEPARATED: resultstr = "SEPARATED"; break;
+         case SCIP_CUTOFF: resultstr = "CUTOFF"; break;
+         case SCIP_REDUCEDDOM: resultstr = "REDUCEDDOM"; break;
+         case SCIP_CONSADDED: resultstr = "CONSADDED"; break;
+         case SCIP_NEWROUND: resultstr = "NEWROUND"; break;
+         default: resultstr = "UNKNOWN"; break;
+      }
+      printf("[DEBUG] sepa <%s> 実行: result=%s, カット数=%lld, depth=%d\n",
+         sepa->name, resultstr, sepa->ncutsfound, depth);
+   }
+
    return SCIP_OKAY;
 }
 

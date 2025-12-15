@@ -39,6 +39,7 @@
 #include "scip/misc.h"
 #include "symmetry/struct_symmetry.h"
 #include "symmetry/type_symmetry.h"
+#include <stdio.h>
 
 
 /** returns inferred type of variable used for symmetry handling */
@@ -152,6 +153,12 @@ SCIP_RETCODE SCIPcomputeOrbitsSym(
    /* store end in "last" orbitbegins entry */
    assert( *norbits < permlen );
    orbitbegins[*norbits] = orbitidx;
+
+   if( *norbits > 0 )
+   {
+      printf("[DEBUG] symmetry: 軌道計算完了 - %d個の非自明軌道を検出 (変数数=%d, 置換数=%d)\n",
+             *norbits, npermvars, nperms);
+   }
 
 #ifdef SCIP_OUTPUT
    printf("Orbits (total number: %d):\n", *norbits);

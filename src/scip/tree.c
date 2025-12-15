@@ -6227,6 +6227,10 @@ SCIP_RETCODE SCIPtreeBranchVar(
    /* update the information for the focus node before creating children */
    SCIP_CALL( SCIPvisualUpdateChild(stat->visual, set, stat, tree->focusnode) );
 
+   /* DEBUG: 分枝変数のログ */
+   printf("[DEBUG] 分枝変数選択: <%s> (type=%d, lb=%.6f, ub=%.6f, priority=%d)\n",
+      SCIPvarGetName(var), SCIPvarGetType(var), SCIPvarGetLbLocal(var), SCIPvarGetUbLocal(var), SCIPvarGetBranchPriority(var));
+
    /* get value of variable in current LP or pseudo solution */
    lpval = SCIPvarGetSol(var, tree->focusnodehaslp);
 
@@ -6537,6 +6541,14 @@ SCIP_RETCODE SCIPtreeBranchVar(
       if( upchild != NULL )
          *upchild = node;
    }
+
+   /* DEBUG: 分枝完了ログ */
+   printf("[DEBUG] 分枝完了: <%s> val=%.6f, downub=%.6f, fixval=%.6f, uplb=%.6f, 子ノード数=%d\n",
+      SCIPvarGetName(var), val,
+      (downub != SCIP_INVALID ? downub : -1e+20),
+      (fixval != SCIP_INVALID ? fixval : -1e+20),
+      (uplb != SCIP_INVALID ? uplb : -1e+20),
+      tree->nchildren);
 
    return SCIP_OKAY;
 }

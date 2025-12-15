@@ -85,6 +85,7 @@
 #include "scip/scip_var.h"
 #include "scip/sepa_gomory.h"
 #include <string.h>
+#include <stdio.h>
 
 #define SEPA_NAME              "gomory"
 #define SEPA_DESC              "separator for Gomory mixed-integer and strong CG cuts from LP tableau rows"
@@ -794,6 +795,13 @@ SCIP_DECL_SEPAEXECLP(sepaExeclpGomory)
    SCIPfreeBufferArray(scip, &cutcoefs);
 
    SCIPdebugMsg(scip, "end searching gomory cuts: found %d cuts\n", naddedcuts);
+
+   /* debug output */
+   if( naddedcuts > 0 )
+   {
+      printf("[DEBUG] sepa_gomory: Gomoryカット %d個生成 (depth=%d, 最大効率=%.4f)\n",
+             naddedcuts, depth, maxcutefficacy);
+   }
 
    sepadata->lastncutsfound = SCIPgetNCutsFound(scip);
 

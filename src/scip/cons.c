@@ -32,6 +32,7 @@
 /*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "scip/def.h"
 #include "scip/set.h"
@@ -4050,6 +4051,19 @@ SCIP_RETCODE SCIPconshdlrPropagate(
             conshdlr->ndomredsfound += stat->nboundchgs + stat->nholechgs - oldndomchgs;
             conshdlr->ndomredsfound -= (stat->nprobboundchgs + stat->nprobholechgs - oldnprobdomchgs);
 
+            /* debug log for constraint propagation */
+            {
+               SCIP_Longint ndomchgs = stat->nboundchgs + stat->nholechgs - oldndomchgs;
+               if( *result == SCIP_CUTOFF || ndomchgs > 0 )
+               {
+                  const char* resultStr = (*result == SCIP_CUTOFF) ? "CUTOFF" :
+                                          (*result == SCIP_REDUCEDDOM) ? "REDUCEDDOM" :
+                                          (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" : "OTHER";
+                  printf("[DEBUG] conshdlr <%s> 伝播: result=%s, 境界変更=%lld, 制約数=%d\n",
+                     conshdlr->name, resultStr, (long long)ndomchgs, nconss);
+               }
+            }
+
             /* check result code of callback method */
             if( *result != SCIP_CUTOFF
                && *result != SCIP_REDUCEDDOM
@@ -4176,6 +4190,10 @@ SCIP_RETCODE SCIPconshdlrPresolve(
          /* start timing */
          SCIPclockStart(conshdlr->presoltime, set);
 
+         printf("[DEBUG] conshdlr <%s> presol開始 (conss=%d, round=%d, timing=%u)\n",
+                conshdlr->name, conshdlr->nactiveconss, nrounds, timing);
+         fflush(stdout);
+
          /* call external method */
          SCIP_CALL( conshdlr->conspresol(set->scip, conshdlr, conshdlr->conss, conshdlr->nactiveconss, nrounds, timing,
                nnewfixedvars, nnewaggrvars, nnewchgvartypes, nnewchgbds, nnewholes,
@@ -4228,6 +4246,20 @@ SCIP_RETCODE SCIPconshdlrPresolve(
          /* increase the number of calls, if the presolving method tried to find reductions */
          if( *result != SCIP_DIDNOTRUN )
             ++(conshdlr->npresolcalls);
+
+         /* debug output for conshdlr presol result */
+         {
+            const char* resultStr = (*result == SCIP_SUCCESS) ? "SUCCESS" :
+                                    (*result == SCIP_CUTOFF) ? "CUTOFF" :
+                                    (*result == SCIP_UNBOUNDED) ? "UNBOUNDED" :
+                                    (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" :
+                                    (*result == SCIP_DIDNOTRUN) ? "DIDNOTRUN" :
+                                    (*result == SCIP_DELAYED) ? "DELAYED" : "OTHER";
+            printf("[DEBUG] conshdlr <%s> presol完了: result=%s, 累計固定=%d, 累計界変更=%d, 累計削除=%d\n",
+                   conshdlr->name, resultStr,
+                   (int)(conshdlr->nfixedvars), (int)(conshdlr->nchgbds), (int)(conshdlr->ndelconss));
+            fflush(stdout);
+         }
       }
 
       SCIPsetDebugMsg(set, "after presolving %d constraints left of handler <%s>\n", conshdlr->nactiveconss, conshdlr->name);

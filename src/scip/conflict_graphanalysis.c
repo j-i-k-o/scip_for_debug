@@ -5624,6 +5624,12 @@ SCIP_RETCODE SCIPconflictAnalyze(
    if( success != NULL )
       *success = (nconss > 0);
 
+   /* debug output */
+   if( nconss > 0 )
+   {
+      printf("[DEBUG] conflict: 衝突解析成功 - %d個の衝突制約生成 (リテラル数=%d)\n", nconss, nliterals);
+   }
+
    /* stop timing */
    SCIPclockStop(conflict->propanalyzetime, set);
 

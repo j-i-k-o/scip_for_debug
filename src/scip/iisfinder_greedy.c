@@ -30,6 +30,7 @@
  */
 
 #include <assert.h>
+#include <stdio.h>
 
 #include "scip/iisfinder_greedy.h"
 
@@ -559,6 +560,10 @@ SCIP_RETCODE deletionFilterBatch(
    iteration = 0;
    deleted = FALSE;
    stopiter = FALSE;
+
+   /* DEBUG: 削除フィルタ開始 */
+   printf("[DEBUG]     deletionFilterBatch() 開始: 制約数=%d, 初期バッチサイズ=%d\n", nconss, initbatchsize);
+
    while( i < nconss )
    {
       /* update batchsize */
@@ -577,9 +582,19 @@ SCIP_RETCODE deletionFilterBatch(
          i++;
       }
 
+      /* DEBUG: バッチ処理 */
+      printf("[DEBUG]       iteration=%d: バッチ内制約数=%d を試験的に削除\n", iteration, k);
+
       /* treat subproblem */
       SCIP_CALL( deletionSubproblem(iis, conss, NULL, idxs, k, timelim, timelimperiter, nodelim, nodelimperiter,
             conservative, FALSE, FALSE, &deleted, &stopiter, alldeletionssolved) );
+
+      /* DEBUG: 削除結果 */
+      if( deleted )
+         printf("[DEBUG]       -> 削除成功! (問題はまだ実行不能)\n");
+      else
+         printf("[DEBUG]       -> 削除失敗 (問題が実行可能になるため元に戻す)\n");
+
       if( !silent && deleted )
          SCIPiisfinderInfoMessage(iis, FALSE);
 
@@ -594,6 +609,9 @@ SCIP_RETCODE deletionFilterBatch(
 
       assert( SCIPgetStage(scip) == SCIP_STAGE_PROBLEM );
    }
+
+   /* DEBUG: 削除フィルタ完了 */
+   printf("[DEBUG]     deletionFilterBatch() 完了: 残り制約数=%d\n", SCIPgetNOrigConss(scip));
 
    SCIPfreeBlockMemoryArray(scip, &order, nconss);
    SCIPfreeBlockMemoryArray(scip, &conss, nconss);
@@ -762,6 +780,10 @@ SCIP_RETCODE additionFilterBatch(
    iteration = 0;
    feasible = TRUE;
    stopiter = FALSE;
+
+   /* DEBUG: 追加フィルタ開始 */
+   printf("[DEBUG]     additionFilterBatch() 開始: 全制約を削除して空から開始\n");
+
    while( i < nconss )
    {
       /* Add the next batch of constraints */
@@ -778,15 +800,26 @@ SCIP_RETCODE additionFilterBatch(
          i++;
       }
 
+      /* DEBUG: 追加バッチ */
+      printf("[DEBUG]       iteration=%d: %d個の制約を追加 (合計=%d)\n", iteration, k, SCIPgetNOrigConss(scip));
+
       /* We have the full infeasible problem again */
       if( i == nconss )
       {
          feasible = FALSE;
+         printf("[DEBUG]       -> 全制約追加完了、実行不能確定\n");
          break;
       }
 
       /* Solve the reduced problem */
       retcode = additionSubproblem(iis, timelim, timelimperiter, nodelim, nodelimperiter, &feasible, &stopiter);
+
+      /* DEBUG: 追加結果 */
+      if( !feasible )
+         printf("[DEBUG]       -> 実行不能になった! (IISが見つかった)\n");
+      else
+         printf("[DEBUG]       -> まだ実行可能、制約を追加し続ける\n");
+
       if( !silent )
          SCIPiisfinderInfoMessage(iis, FALSE);
       if( !feasible || stopiter || timelim - SCIPiisGetTime(iis) <= 0 || ( nodelim != -1 && SCIPiisGetNNodes(iis) >= nodelim ) )

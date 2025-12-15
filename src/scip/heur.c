@@ -1337,6 +1337,19 @@ SCIP_RETCODE SCIPheurExec(
       heur->nsolsfound += primal->nsolsfound - oldnsolsfound;
       heur->nbestsolsfound += primal->nbestsolsfound - oldnbestsolsfound;
 
+      /* debug log for heuristic execution */
+      if( *result != SCIP_DIDNOTRUN && *result != SCIP_DELAYED )
+      {
+         SCIP_Longint newsolsfound = primal->nsolsfound - oldnsolsfound;
+         SCIP_Longint newbestsolsfound = primal->nbestsolsfound - oldnbestsolsfound;
+         const char* resultStr = (*result == SCIP_FOUNDSOL) ? "FOUNDSOL" :
+                                 (*result == SCIP_DIDNOTFIND) ? "DIDNOTFIND" :
+                                 (*result == SCIP_UNBOUNDED) ? "UNBOUNDED" : "OTHER";
+         printf("[DEBUG] heur <%s> 実行: result=%s, 新解=%lld, 最良解更新=%lld, depth=%d, 累計呼出=%lld\n",
+            heur->name, resultStr, (long long)newsolsfound, (long long)newbestsolsfound,
+            depth, (long long)heur->ncalls);
+      }
+
       /* update delay position of heuristic */
       if( *result != SCIP_DELAYED && heur->delaypos != -1 )
       {
