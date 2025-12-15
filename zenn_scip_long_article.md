@@ -28,8 +28,8 @@ published: false
 本記事で使用するリポジトリは、SCIP公式リポジトリ（`scipopt/scip`）のtag `v10.0.0` をフォークし、**デバッグログ出力を追加**したものである。オリジナルとの差分は、求解処理の各フェーズで `[DEBUG]` プレフィックス付きのログを出力する `printf` 文を追加した点のみである。
 
 ```bash
-# リポジトリのクローン
-git clone https://github.com/j-i-k-o/scip_for_debug
+# リポジトリのクローン（v10.0.0-debugブランチを指定）
+git clone -b v10.0.0-debug https://github.com/j-i-k-o/scip_for_debug
 cd scip_for_debug
 
 # ビルド（cmakeを使用）
