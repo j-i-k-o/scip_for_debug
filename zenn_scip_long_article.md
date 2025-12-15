@@ -28,19 +28,34 @@ published: false
 本記事で使用するリポジトリは、SCIP公式リポジトリ（`scipopt/scip`）のtag `v10.0.0` をフォークし、**デバッグログ出力を追加**したものである。オリジナルとの差分は、求解処理の各フェーズで `[DEBUG]` プレフィックス付きのログを出力する `printf` 文を追加した点のみである。
 
 ```bash
-# リポジトリのクローン（v10.0.0-debugブランチを指定）
+# 作業ディレクトリの作成
+mkdir -p ~/scip_work && cd ~/scip_work
+
+# SoPlexのビルド（SCIPが依存するLPソルバー）
+git clone -b release-700 https://github.com/scipopt/soplex
+cd soplex
+mkdir build && cd build
+cmake ..
+make -j4
+cd ../..
+
+# SCIPのクローン（v10.0.0-debugブランチを指定）
 git clone -b v10.0.0-debug https://github.com/j-i-k-o/scip_for_debug
 cd scip_for_debug
 
-# ビルド（cmakeを使用）
-mkdir build
-cd build
-cmake ..
+# SCIPのビルド（SoPlexのパスを指定）
+mkdir build && cd build
+cmake .. -DAUTOBUILD=ON -DSOPLEX_DIR=~/scip_work/soplex/build
 make -j4
 
 # 実行確認
 ./bin/scip --version
 ```
+
+:::message alert
+**注意**: SCIPのビルドにはSoPlex（LPソルバー）が必要である。上記の手順ではSoPlexを先にビルドし、そのパスをSCIPのcmakeに渡している。
+:::
+
 
 デモ用の問題ファイルとバッチファイルは `demo/` ディレクトリに配置されている：
 
