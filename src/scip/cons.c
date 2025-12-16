@@ -3528,9 +3528,25 @@ SCIP_RETCODE SCIPconshdlrEnforceLPSol(
          /* start timing */
          SCIPclockStart(conshdlr->enfolptime, set);
 
+         /* DEBUG: LP解の強制開始 */
+         printf("[DEBUG]         consenfolp() 開始: conshdlr=<%s>, nconss=%d\n",
+            conshdlr->name, nconss);
+
          /* call external method */
          SCIP_CALL( conshdlr->consenfolp(set->scip, conshdlr, conss, nconss, nusefulconss, solinfeasible, result) );
          SCIPsetDebugMsg(set, " -> enforcing returned result <%d>\n", *result);
+
+         /* DEBUG: LP解の強制完了 */
+         printf("[DEBUG]         consenfolp() 完了: conshdlr=<%s>, result=%d (%s)\n",
+            conshdlr->name, *result,
+            *result == SCIP_CUTOFF ? "CUTOFF" :
+            *result == SCIP_CONSADDED ? "CONSADDED" :
+            *result == SCIP_REDUCEDDOM ? "REDUCEDDOM" :
+            *result == SCIP_SEPARATED ? "SEPARATED" :
+            *result == SCIP_SOLVELP ? "SOLVELP" :
+            *result == SCIP_BRANCHED ? "BRANCHED" :
+            *result == SCIP_INFEASIBLE ? "INFEASIBLE" :
+            *result == SCIP_FEASIBLE ? "FEASIBLE" : "UNKNOWN");
 
          /* stop timing */
          SCIPclockStop(conshdlr->enfolptime, set);
@@ -3755,9 +3771,25 @@ SCIP_RETCODE SCIPconshdlrEnforcePseudoSol(
          /* start timing */
          SCIPclockStart(conshdlr->enfopstime, set);
 
+         /* DEBUG: 疑似解の強制開始 */
+         printf("[DEBUG]         consenfops() 開始: conshdlr=<%s>, nconss=%d, objinfeasible=%d\n",
+            conshdlr->name, nconss, objinfeasible);
+
          /* call external method */
          SCIP_CALL( conshdlr->consenfops(set->scip, conshdlr, conss, nconss, nusefulconss, solinfeasible, objinfeasible, result) );
          SCIPsetDebugMsg(set, " -> enforcing returned result <%d>\n", *result);
+
+         /* DEBUG: 疑似解の強制完了 */
+         printf("[DEBUG]         consenfops() 完了: conshdlr=<%s>, result=%d (%s)\n",
+            conshdlr->name, *result,
+            *result == SCIP_CUTOFF ? "CUTOFF" :
+            *result == SCIP_CONSADDED ? "CONSADDED" :
+            *result == SCIP_REDUCEDDOM ? "REDUCEDDOM" :
+            *result == SCIP_SOLVELP ? "SOLVELP" :
+            *result == SCIP_BRANCHED ? "BRANCHED" :
+            *result == SCIP_INFEASIBLE ? "INFEASIBLE" :
+            *result == SCIP_FEASIBLE ? "FEASIBLE" :
+            *result == SCIP_DIDNOTRUN ? "DIDNOTRUN" : "UNKNOWN");
 
          /* stop timing */
          SCIPclockStop(conshdlr->enfopstime, set);

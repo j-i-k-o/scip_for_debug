@@ -3661,6 +3661,10 @@ SCIP_RETCODE enforceConstraints(
    *branched = FALSE;
    /**@todo avoid checking the same pseudosolution twice */
 
+   /* DEBUG: 制約強制開始 */
+   printf("[DEBUG]       enforceConstraints() 開始: LP=%s, nconshdlrs=%d\n",
+      SCIPtreeHasFocusNodeLP(tree) ? "YES" : "NO", set->nconshdlrs);
+
    /* enforce (best) relaxation solution if the LP has a worse objective value */
    enforcerelaxsol = SCIPrelaxationIsSolValid(relaxation) && SCIPrelaxationIsLpIncludedForSol(relaxation) && (!SCIPtreeHasFocusNodeLP(tree)
          || SCIPsetIsGT(set, SCIPrelaxationGetSolObj(relaxation), SCIPlpGetObjval(lp, set, prob)));
@@ -3901,6 +3905,10 @@ SCIP_RETCODE enforceConstraints(
 
    SCIPsetDebugMsg(set, " -> enforcing result: branched=%u, cutoff=%u, infeasible=%u, propagateagain=%u, solvelpagain=%u, resolved=%u\n",
       *branched, *cutoff, *infeasible, *propagateagain, *solvelpagain, resolved);
+
+   /* DEBUG: 制約強制完了 */
+   printf("[DEBUG]       enforceConstraints() 完了: branched=%d, cutoff=%d, infeasible=%d, propagateagain=%d, solvelpagain=%d\n",
+      *branched, *cutoff, *infeasible, *propagateagain, *solvelpagain);
 
    return SCIP_OKAY;
 }
@@ -5358,8 +5366,13 @@ SCIP_RETCODE SCIPsolveCIP(
          {
             /* select next node to process */
             /* DEBUG: ノード選択 */
-            printf("[DEBUG] SCIPnodeselSelect() ノード選択中...\n");
+            printf("[DEBUG] SCIPnodeselSelect() ノード選択中... (nodesel=<%s>)\n", SCIPnodeselGetName(nodesel));
             SCIP_CALL( SCIPnodeselSelect(nodesel, set, &nextnode) );
+            if( nextnode != NULL )
+               printf("[DEBUG] SCIPnodeselSelect() 選択完了: node #%" SCIP_LONGINT_FORMAT " (depth=%d)\n",
+                  SCIPnodeGetNumber(nextnode), SCIPnodeGetDepth(nextnode));
+            else
+               printf("[DEBUG] SCIPnodeselSelect() 選択完了: ノードなし (探索木が空)\n");
          }
          focusnode = nextnode;
          nextnode = NULL;
@@ -5603,7 +5616,14 @@ SCIP_RETCODE SCIPsolveCIP(
          /* select node to process in next solving loop; the primal heuristics need to know whether a child/sibling
           * (plunging) will be selected as next node or not
           */
+         /* DEBUG: 次ノード選択 */
+         printf("[DEBUG] SCIPnodeselSelect() 次ノード選択中... (nodesel=<%s>)\n", SCIPnodeselGetName(nodesel));
          SCIP_CALL( SCIPnodeselSelect(nodesel, set, &nextnode) );
+         if( nextnode != NULL )
+            printf("[DEBUG] SCIPnodeselSelect() 次ノード選択完了: node #%" SCIP_LONGINT_FORMAT " (depth=%d)\n",
+               SCIPnodeGetNumber(nextnode), SCIPnodeGetDepth(nextnode));
+         else
+            printf("[DEBUG] SCIPnodeselSelect() 次ノード選択完了: ノードなし (探索木が空)\n");
          assert(BMSgetNUsedBufferMemory(mem->buffer) == 0);
 
          /* call primal heuristics that should be applied after the node was solved */
